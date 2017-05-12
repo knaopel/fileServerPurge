@@ -80,18 +80,14 @@ function Send-OCMailMessage {
         [string]
         $Message
     )
-    $file = ".\encrypted-credentials.xml"
-    if (Test-Path -Path $file) {
-        $from = "opelk@oakgov.com"
-        $svr = "smtp.office365.com"
-        $prt = 587
-        $cred = Import-Clixml $file
+    try {
+        $from = "do-not-reply@oakgov.com"
+        $svr = "smtp.oakgov.com"
         $body = $mailTemplate -f $Message
-        Send-MailMessage -To $ToEmail -From $from -Subject $Subject -Body $body -BodyAsHtml -SmtpServer $svr -UseSsl -Port $prt -Credential $cred
+        Send-MailMessage -To $ToEmail -From $from -Subject $Subject -Body $body -BodyAsHtml -SmtpServer $svr
     }
-    else {
-        # no credential file - error
-        Write-OCEventLog -LogSourceName $logName -EventId 2 -EntryType Error -Message "Credentials for mail have not been saved. Cannot send email."
+    catch {
+        Write-OCEventLog -LogSourceName $logName -EventId 2 -EntryType Error -Message "Cannot send email."
     }
 
 }
