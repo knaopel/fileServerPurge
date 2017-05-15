@@ -28,7 +28,7 @@ $mailTemplate = @"
 </html>
 "@
 
-$errors = @()
+$errors = [string[]]@()
 
 function Test-EventLogSource {
     param(
@@ -38,7 +38,14 @@ function Test-EventLogSource {
         $SourceName
     )
 
-    [System.Diagnostics.EventLog]::SourceExists($SourceName)
+    try {
+        if (-not ([System.Diagnostics.EventLog]::SourceExists($SourceName))) {
+            return $false
+        }
+        return $true
+    } catch [System.Security.SecurityException] {
+        return $false
+    }
 }
 
 function Write-OCEventLog {
@@ -99,36 +106,48 @@ function Clear-FileServerDirectory {
             Position = 0,
             ValueFromPipeline = $true)]
         [string]
-        $Path
+        $Path#,
+        # [Parameter(Mandatory = $true)]
+        # [string[]]
+        # $ErrorArray
     )
+
+    $msg = $null
     
     Write-OCEventLog -LogSourceName $logName -EventId 101 -Message "Preparing to remove files from $Path."
     
     try {
+        $ErrorActionPreference = "Stop"
         Remove-Item -Path "$Path\*" -Recurse
         # throw New-Object -TypeName System.Exception
         Write-OCEventLog -LogSourceName $logName -EventId 102 -Message "All files and folders removed from $Path."        
     }
-    catch [System.IOException] {
-        $ErrorMessage = $_.Exception.Message
-        $FailedItem = $_.Exception.ItemName
-        $Message = "Delete content in $Path failed on $FailedItem. The error message was $ErrorMEssage."
-        $errors += $Message
-        Write-OCEventLog -LogSourceName $logName -EventId 201 -EntryType Error -Message $Message        
-    }
+    # catch [System.IOException] {
+    #     $ErrorMessage = $_.Exception.Message
+    #     $FailedItem = $_.Exception.ItemName
+    #     $Message = "Delete content in $Path failed on $FailedItem. The error message was $ErrorMEssage."
+    #     $errors += $Message
+    #     Write-OCEventLog -LogSourceName $logName -EventId 201 -EntryType Error -Message $Message        
+    # }
     catch {
         $ErrorMessage = $_.Exception.Message
         $FailedItem = $_.Exception.ItemName
-        $Message = "Delete content in $Path failed on $FailedItem. The error message was $ErrorMEssage."
-        $errors += $Message
+        $Message = "Delete content in $Path failed on `"$FailedItem`". The error message was `"$ErrorMessage`"."
+        $msg = $Message
         Write-OCEventLog -LogSourceName $logName -EventId 201 -EntryType Error -Message $Message
+    } finally {
+        $ErrorActionPreference = "Continue" 
     }
+    return $msg   
 }
 
 Write-OCEventLog -LogSourceName $logName -Message "Starting periodic purge of files from $Path"
 
 Get-ChildItem -Path $Path -Directory | ForEach-Object {
-    $_.FullName | Clear-FileServerDirectory
+    $msg = $_.FullName | Clear-FileServerDirectory
+    if ($msg -ne $null) {
+        $errors += $msg
+    }
 }
 
 if ($errors.Length -gt 0) {

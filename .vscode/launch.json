@@ -6,7 +6,7 @@
             "request": "launch",
             "name": "PowerShell Launch (current file)",
             "script": "${file}",
-            "args": ["-Path G:\\TestDatashare -EmailRecipient opelk@oakgov.com"],
+            "args": ["-Path E:\\TestDatashare -EmailRecipient opelk@oakgov.com"],
             "cwd": "${file}"
         },
         {
