@@ -118,7 +118,7 @@ function Clear-FileServerDirectory {
     
     try {
         $ErrorActionPreference = "Stop"
-        Remove-Item -Path "$Path\*" -Recurse
+        Remove-Item -Path "$Path\*" -Recurse -Force
         # throw New-Object -TypeName System.Exception
         Write-OCEventLog -LogSourceName $logName -EventId 102 -Message "All files and folders removed from $Path."        
     }
